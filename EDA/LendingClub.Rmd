@@ -1,0 +1,210 @@
+---
+title: "Lendingclub"
+author: "elsa"
+date: "8 septembre 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+```{r}
+library(tidyverse)
+library(data.table)
+library(stringr)
+library(DescTools)
+library(lubridate)
+```
+revol_bal: amount used and not repaid
+revol_util:the amount of credit the borrower is using relative to all available revolving credit.
+total_acc: The total number of credit lines currently in the borrower's credit file
+initial_list_status: two possible settings –“F” for fractional, “W” for whole.
+out_prncp:	Remaining outstanding principal for total amount funded
+out_prncp_inv	Remaining outstanding principal for portion of total amount funded by investors
+total_pymnt	Payments received to date for total amount funded
+total_pymnt_inv	Payments received to date for portion of total amount funded by investors
+total_rec_int	Interest received to date
+total_rec_late_fee	Late fees received to date
+total_rec_prncp	Principal received to date
+recoveries	post charge off gross recovery
+collection_recovery_fee	post charge off collection fee
+last_pymnt_d	Last month payment was received   Date
+next_pymnt_d	next month payment was received  Date
+last_credit_pull_d	The most recent month LC pulled credit for this loan: checked or decreased the score? Date
+collections_12_mths_ex_med	Number of collections in 12 months excluding medical collections
+recouvrement de dettes
+mths_since_last_major_derog	Months since most recent 90-day or worse rating Month
+policy_code	"publicly available policy_code=1 new products not publicly available policy_code=2"
+application_type individual application or a joint application with two co-borrowers if individual alors tous ce qui est joint est vide
+annual_inc_joint	The combined self-reported annual income provided by the co-borrowers during registration            addition
+dti_joint	A ratio calculated using the co-borrowers' total monthly payments on the total debt obligations, excluding mortgages and the requested LC loan, divided by the co-borrowers' combined self-reported monthly income           addition
+verification_status_joint: 
+acc_now_delinq	The number of accounts on which the borrower is now delinquent.
+tot_coll_amt	Total collection amounts ever owed
+tot_cur_bal	Total current balance of all accounts
+open_acc_6m	Number of open trades in last 6 months
+open_il_6m	Number of currently active installment trades
+open_il_12m	Number of installment accounts opened in past 12 months
+open_il_24m	Number of installment accounts opened in past 24 months
+open_rv_12m	Number of revolving trades opened in past 12 months
+open_rv_24m	Number of revolving trades opened in past 24 months
+mths_since_rcnt_il	Months since most recent installment accounts opened
+total_rev_hi_lim 	Total revolving high credit/credit limit
+
+
+
+```{r}
+data_lending <- read_csv("../inputs/loan.csv", 
+  col_types = cols(
+  id = col_character(),
+  member_id = col_character(),
+  loan_amnt = col_double(),
+  funded_amnt = col_double(),
+  funded_amnt_inv = col_double(),
+  term = col_character(),
+  int_rate = col_double(),
+  installment = col_double(),
+  grade = col_character(),
+  sub_grade = col_character(),
+  emp_title = col_character(),
+  emp_length = col_character(),
+  home_ownership = col_character(),
+  annual_inc = col_double(),
+  verification_status = col_character(),
+  issue_d = col_character(),
+  loan_status = col_character(),
+  pymnt_plan = col_character(),
+  url = col_character(),
+  desc = col_character(),
+  purpose = col_character(),
+  title = col_character(),
+  zip_code = col_character(),
+  addr_state = col_character(),
+  dti = col_double(),
+  delinq_2yrs = col_double(),
+  earliest_cr_line = col_character(),
+  inq_last_6mths = col_double(),
+  mths_since_last_delinq = col_double(),
+  mths_since_last_record = col_double(),
+  open_acc = col_double(),
+  pub_rec = col_double(),
+  revol_bal = col_double(),
+  revol_util = col_double(),
+  total_acc = col_double(),
+  initial_list_status = col_character(),
+  out_prncp = col_double(),
+  out_prncp_inv = col_double(),
+  total_pymnt = col_double(),
+  total_pymnt_inv = col_double(),
+  total_rec_prncp = col_double(),
+  total_rec_int = col_double(),
+  total_rec_late_fee = col_double(),
+  recoveries = col_double(),
+  collection_recovery_fee = col_double(),
+  last_pymnt_d = col_character(),
+  last_pymnt_amnt = col_double(),
+  next_pymnt_d = col_character(),
+  last_credit_pull_d = col_character(),
+  collections_12_mths_ex_med = col_double(),
+  mths_since_last_major_derog = col_character(),
+  policy_code = col_double(),
+  application_type = col_character(),
+  annual_inc_joint = col_character(),
+  dti_joint = col_character(),
+  verification_status_joint = col_character(),
+  acc_now_delinq = col_double(),
+  tot_coll_amt = col_character(),
+  tot_cur_bal = col_character(),
+  open_acc_6m = col_character(),
+  open_il_6m = col_character(),
+  open_il_12m = col_character(),
+  open_il_24m = col_character(),
+  mths_since_rcnt_il = col_character(),
+  total_bal_il = col_character(),
+  il_util = col_character(),
+  open_rv_12m = col_character(),
+  open_rv_24m = col_character(),
+  max_bal_bc = col_character(),
+  all_util = col_character(),
+  total_rev_hi_lim = col_double(),
+  inq_fi = col_character(),
+  total_cu_tl = col_character(),
+  inq_last_12m = col_character()
+))
+```
+
+# Exploratory Data Analysis
+
+```{r}
+summary(data_lending)
+```
+
+## Missing values
+
+```{r}
+missing_table <-  data_lending %>% 
+  map_dbl(~ round(sum(is.na(.x))/length(.x), digits=2)) %>%
+  data_frame(a=names(.), b=.) %>% 
+  DT::datatable()
+
+delete_missing <- missing_table$x$data %>%  filter(b>0.7) %>% select(a) %>% unlist()
+data_lending_deleted_missing <- data_lending[ , -which(names(data_lending) %in% delete_missing)]
+
+missing_table
+
+```
+
+## Feature Cleaning
+
+```{r}
+#extract numbers from term
+data_clean <- data_lending_deleted_missing %>% 
+  mutate(term= as.numeric(str_extract_all(term, "[[:digit:]]+")))
+
+#extract numbers from employment length
+data_clean1 <- data_clean %>% 
+  mutate(emp_length= as.numeric(str_extract_all(emp_length, "[[:digit:]]+")))
+
+#Binary Verification Status
+data_clean2 <- data_clean1 %>% 
+  mutate(verification_status= ifelse(verification_status=="Not Verified", 0, 1)) 
+
+#Issue Date into dates
+
+months_dict <- c("01", "02", "03", "4", "5", "6", "7", "8", "9", "10", "11", "12")
+names(months_dict) <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+data_clean3 <- data_clean2 %>% 
+  separate(issue_d, c("m_d", "y_d"), sep = "-") %>% 
+  mutate(d_d = "01") %>% 
+  mutate(good_m = months_dict[m_d]) %>% 
+  unite(issue_d, d_d, good_m, y_d, sep="-") 
+
+  
+
+  
+```
+  mutate(issue_d=as.Date(issue_d, format="%d-%b-%Y"))
+
+# Graphs
+
+```{r}
+Desc(data_clean$loan_amnt, main = "Loan amount distribution", plotit = TRUE)
+```
+
+```{r}
+Desc(data_clean$loan_status, plotit = TRUE)
+```
+
+Quel proportion de mec voit son pret financer? 
+
+Quel son les prêts qui font défaults
+
+Rentabilité théorique vs réelle
+
+```{r}
+data_clean1 <- data_clean 
+```
+
