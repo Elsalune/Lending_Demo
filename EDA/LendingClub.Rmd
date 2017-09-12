@@ -13,6 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(data.table)
+library(stringr)
+library(DescTools)
+library(lubridate)
 ```
 revol_bal: amount used and not repaid
 revol_util:the amount of credit the borrower is using relative to all available revolving credit.
@@ -53,7 +56,7 @@ total_rev_hi_lim 	Total revolving high credit/credit limit
 
 
 ```{r}
-data_lending <- read_csv("../input/loan.csv", 
+data_lending <- read_csv("../inputs/loan.csv", 
   col_types = cols(
   id = col_character(),
   member_id = col_character(),
@@ -132,13 +135,13 @@ data_lending <- read_csv("../input/loan.csv",
 ))
 ```
 
-# EDA
+# Exploratory Data Analysis
 
 ```{r}
 summary(data_lending)
 ```
 
-Missing values
+## Missing values
 
 ```{r}
 missing_table <-  data_lending %>% 
@@ -149,4 +152,59 @@ missing_table <-  data_lending %>%
 delete_missing <- missing_table$x$data %>%  filter(b>0.7) %>% select(a) %>% unlist()
 data_lending_deleted_missing <- data_lending[ , -which(names(data_lending) %in% delete_missing)]
 
+missing_table
+
 ```
+
+## Feature Cleaning
+
+```{r}
+#extract numbers from term
+data_clean <- data_lending_deleted_missing %>% 
+  mutate(term= as.numeric(str_extract_all(term, "[[:digit:]]+")))
+
+#extract numbers from employment length
+data_clean1 <- data_clean %>% 
+  mutate(emp_length= as.numeric(str_extract_all(emp_length, "[[:digit:]]+")))
+
+#Binary Verification Status
+data_clean2 <- data_clean1 %>% 
+  mutate(verification_status= ifelse(verification_status=="Not Verified", 0, 1)) 
+
+#Issue Date into dates
+
+months_dict <- c("01", "02", "03", "4", "5", "6", "7", "8", "9", "10", "11", "12")
+names(months_dict) <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+data_clean3 <- data_clean2 %>% 
+  separate(issue_d, c("m_d", "y_d"), sep = "-") %>% 
+  mutate(d_d = "01") %>% 
+  mutate(good_m = months_dict[m_d]) %>% 
+  unite(issue_d, d_d, good_m, y_d, sep="-") 
+
+  
+
+  
+```
+  mutate(issue_d=as.Date(issue_d, format="%d-%b-%Y"))
+
+# Graphs
+
+```{r}
+Desc(data_clean$loan_amnt, main = "Loan amount distribution", plotit = TRUE)
+```
+
+```{r}
+Desc(data_clean$loan_status, plotit = TRUE)
+```
+
+Quel proportion de mec voit son pret financer? 
+
+Quel son les prêts qui font défaults
+
+Rentabilité théorique vs réelle
+
+```{r}
+data_clean1 <- data_clean 
+```
+
