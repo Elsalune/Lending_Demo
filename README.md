@@ -22,5 +22,7 @@
 * Est-il plus interessant d'investir sur un mauvais payeur (qui aura plus d'intêrets) ou ne pas prendre de risque? 
 * Existe t'il des clusters de zones géographiques ?
 * Correlation négtive entre le nombre de credit_line et le risque ? 
+* Est-ce que les gens qui empruntent sur 60 mois font des plus gros crédits ? 
+* Retrouve les users et verifier si ils prennent une autre ligne pour rembourser la précédente
 
 
