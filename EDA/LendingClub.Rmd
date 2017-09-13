@@ -239,7 +239,8 @@ data_benef <- data_clean6 %>%
 # Investor theoretical ROI
 
 data_ROI <- data_benef %>% 
-  mutate(roi = (total_benef/loan_amnt))
+  mutate(roi = (total_benef/loan_amnt)) %>% 
+  filter(loan_amnt==funded_amnt)
 
 
 ```
@@ -248,14 +249,14 @@ data_ROI <- data_benef %>%
 # Graphs
 
 ```{r}
-Desc(data_clean$loan_amnt, main = "Loan amount distribution", plotit = TRUE)
+Desc(data_ROI$loan_amnt, main = "Loan amount distribution", plotit = TRUE)
 ```
 
 ```{r}
-Desc(data_clean$loan_status, plotit = TRUE)
+Desc(data_ROI$loan_status, plotit = TRUE)
 ```
 
-## Theoretical Roi compared to Grades
+## Theoretical Roi compared to actual status of loan
 
 ```{r}
 ggplot(data_ROI, aes(x= as.factor(loan_status), y=roi)) +
@@ -266,7 +267,7 @@ ggplot(data_ROI, aes(x= as.factor(loan_status), y=roi)) +
 
 
 
-## Theoretical Roi compared to actual status of loan
+## Theoretical Roi compared to grades
 
 ```{r}
 ggplot(data_ROI, aes(x= as.factor(grade), y=roi)) +
