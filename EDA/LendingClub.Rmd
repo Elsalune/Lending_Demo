@@ -115,6 +115,7 @@ missing_table <-  data_lending %>%
   DT::datatable()
 
 delete_missing <- missing_table$x$data %>%  filter(b>0.7) %>% select(a) %>% unlist()
+
 data_lending_deleted_missing <- data_lending[ , -which(names(data_lending) %in% delete_missing)]
 
 missing_table
@@ -191,20 +192,23 @@ data_clean6 <- data_clean5 %>%
 ```{r}
 # Formulas to calclulate monthly payment due 
 data_clean6 %>% 
-  mutate(monthly_pymt_calculated= (loan_amnt*(int_rate*0.01/12))/(1 - (1 +int_rate*0.01/12) ^(-term))) %>%      mutate(diff_pmt=monthly_pymt_calculated - installment) %>% 
+  mutate(monthly_pymt_calculated= 
+           (loan_amnt*(int_rate*0.01/12))/(1 - (1 +int_rate*0.01/12) ^(-term))) %>%         mutate(diff_pmt=monthly_pymt_calculated - installment) %>% 
   select(installment, monthly_pymt_calculated, diff_pmt)
 
 # Real total payment and benefits for the investors
 
 data_benef <- data_clean6 %>%
-  mutate(real_pymt = installment*term) %>% 
-  mutate(total_benef = real_pymt - loan_amnt)
+  mutate(theo_pymt = installment*term) %>% 
+  mutate(theo_benef = theo_pymt - loan_amnt)
 
-# Investor theoretical ROI
+# Investor theoretical and actual ROI
 
 data_ROI <- data_benef %>% 
-  mutate(roi = (total_benef/loan_amnt)) %>% 
-  filter(loan_amnt==funded_amnt)
+  mutate(theo_roi = (theo_benef/loan_amnt)) %>% 
+  filter(loan_amnt==funded_amnt) %>% 
+  mutate(diff_pymt = total_pymnt - total_pymnt_inv) %>% 
+  mutate(real_roi= total_pymnt/loan_amnt)
 
 
 ```
@@ -215,14 +219,147 @@ data_ROI <- data_benef %>%
 Desc(data_ROI$loan_amnt, main = "Loan amount distribution", plotit = TRUE)
 ```
 
+## Total monthly amount in time 
 ```{r}
 amnt_df <- data_ROI %>% 
   select(issue_d, loan_amnt) %>% 
   group_by(issue_d) %>% 
   summarise(Amount = sum(loan_amnt))
 
-ts_amnt <- ggplot(amnt_df,aes(x = issue_d, y = Amount)) +
-  geom_line() + xlab("Date issued")
+ ggplot(amnt_df,aes(x = issue_d, y = Amount)) +
+  geom_line() + 
+  labs(x="Date issued", y= "Loan Amount", title="Evolution of amount required in time")
+```
+
+## Proportion of amount 
+
+## Amount compared to Grades 
+
+```{r}
+box_grade <- ggplot(data_ROI, aes(grade, loan_amnt))
+box_grade + geom_boxplot(aes(fill = grade)) +
+  theme(axis.text.x = element_blank()) +
+  labs(title = "Loan amount by grades",
+    x = "Grades",
+    y = "Amount")  
+```
+
+
+## Amount compared to status 
+
+```{r}
+box_status <- ggplot(data_ROI, aes(loan_status, loan_amnt))
+box_status + geom_boxplot(aes(fill = loan_status)) +
+  theme(axis.text.x = element_blank()) +
+  labs(title = "Loan amount by status",
+    x = "Status",
+    y = "Amount")
+
+```
+
+
+
+## Amount comparared to terms and grades
+
+```{r}
+box_term <- ggplot(data_ROI, aes(as.factor(term), loan_amnt))
+box_term + geom_boxplot(aes(fill = as.factor(term))) +
+  theme(axis.text.x = element_blank()) +
+  labs(title = "Loan amount by term and grades",
+    x = "term",
+    y = "Amount")
+
+ggplot(data_ROI, aes(x= grade , y= loan_amnt, fill=as.factor(term) )) + 
+  geom_bar(stat = "identity", position = "fill")
+
+
+```
+
+
+## Amount compared to purpose
+
+```{r}
+Desc(data_ROI$purpose, plotit = TRUE)
+
+```
+
+
+```{r}
+box_purpose <- ggplot(data_ROI, aes(as.factor(purpose), loan_amnt))
+box_purpose + geom_boxplot(aes(fill = as.factor(purpose))) +
+  theme(axis.text.x = element_blank()) +
+  labs(title = "Loan amount by purpose",
+    x = "term",
+    y = "Amount")
+```
+
+## Loan amt compared to income
+
+```{r}
+data_inc <- data_ROI %>% 
+  filter(annual_inc<500000) %>% 
+  filter(loan_status!="Current") %>% 
+  mutate(inc_amnt= loan_amnt/annual_inc)
+
+ggplot(data_inc, aes(x=inc_amnt)) +
+  geom_histogram(bins = 50)+
+  facet_grid(.~ as.factor(term))+
+  xlim(0, 0.7)
+
+data_36 <- data_inc %>% 
+  filter(term==36)
+data_60 <- data_inc %>% 
+  filter(term==60)
+# 36 terms
+ggplot(data_36, aes(x=annual_inc, y= loan_amnt)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0.50, color="red")
+
+#60 terms
+ggplot(data_60, aes(x=annual_inc, y= loan_amnt)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0.52, color="red")
+
+ggplot(data_inc, aes(x=as.factor(term), y=annual_inc))+
+  geom_boxplot()
+
+```
+
+## Est-ce que les gens qui empruntent beaucoup par rappor à leur salaire sont plus en défault et est-ce qu'ils ont les bonnes grades
+
+```{r}
+data_inc_factor <- data_inc %>% 
+  mutate(term=as.factor(term)) %>% 
+  mutate(loan_status= as.factor(loan_status))
+
+ggplot(data_inc_factor, aes(x=loan_status, y=inc_amnt, fill=loan_status)) +
+  geom_boxplot() +
+  ylim(0,1) +
+  facet_grid(.~term)
+
+```
+
+## ANOVA
+
+```{r}
+data_model_36 <- data_inc_factor %>% 
+  filter(term==36) %>% 
+  filter(loan_status %in% c("Fully Paid", "Charged Off"))
+
+model_proportion <- lm(inc_amnt ~ loan_status, data=data_model_36)
+summary(model_proportion)
+anova(model_proportion)
+confint(model_proportion)
+
+data_model_60 <- data_inc_factor %>% 
+  filter(term==60)
+
+
+model_proportion <- lm(inc_amnt ~ loan_status, data=data_model_60)
+summary(model_proportion)
+anova(model_proportion)
+confint(model_proportion)
+
 ```
 
 
