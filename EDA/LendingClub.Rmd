@@ -18,42 +18,6 @@ library(DescTools)
 library(lubridate)
 ```
 
-revol_bal: amount used and not repaid
-revol_util:the amount of credit the borrower is using relative to all available revolving credit.
-total_acc: The total number of credit lines currently in the borrower's credit file
-initial_list_status: two possible settings –“F” for fractional, “W” for whole.
-out_prncp:	Remaining outstanding principal for total amount funded
-out_prncp_inv	Remaining outstanding principal for portion of total amount funded by investors
-total_pymnt	Payments received to date for total amount funded
-total_pymnt_inv	Payments received to date for portion of total amount funded by investors
-total_rec_int	Interest received to date
-total_rec_late_fee	Late fees received to date
-total_rec_prncp	Principal received to date
-recoveries	post charge off gross recovery
-collection_recovery_fee	post charge off collection fee
-last_pymnt_d	Last month payment was received   Date
-next_pymnt_d	next month payment was received  Date
-last_credit_pull_d	The most recent month LC pulled credit for this loan: checked or decreased the score? Date
-collections_12_mths_ex_med	Number of collections in 12 months excluding medical collections
-recouvrement de dettes
-mths_since_last_major_derog	Months since most recent 90-day or worse rating Month
-policy_code	"publicly available policy_code=1 new products not publicly available policy_code=2"
-application_type individual application or a joint application with two co-borrowers if individual alors tous ce qui est joint est vide
-annual_inc_joint	The combined self-reported annual income provided by the co-borrowers during registration            addition
-dti_joint	A ratio calculated using the co-borrowers' total monthly payments on the total debt obligations, excluding mortgages and the requested LC loan, divided by the co-borrowers' combined self-reported monthly income           addition
-verification_status_joint: 
-acc_now_delinq	The number of accounts on which the borrower is now delinquent.
-tot_coll_amt	Total collection amounts ever owed
-tot_cur_bal	Total current balance of all accounts
-open_acc_6m	Number of open trades in last 6 months
-open_il_6m	Number of currently active installment trades
-open_il_12m	Number of installment accounts opened in past 12 months
-open_il_24m	Number of installment accounts opened in past 24 months
-open_rv_12m	Number of revolving trades opened in past 12 months
-open_rv_24m	Number of revolving trades opened in past 24 months
-mths_since_rcnt_il	Months since most recent installment accounts opened
-total_rev_hi_lim 	Total revolving high credit/credit limit
-
 
 
 ```{r}
@@ -245,18 +209,29 @@ data_ROI <- data_benef %>%
 
 ```
 
-
-# Graphs
+# Graphs on loan amounts
 
 ```{r}
 Desc(data_ROI$loan_amnt, main = "Loan amount distribution", plotit = TRUE)
 ```
 
 ```{r}
+amnt_df <- data_ROI %>% 
+  select(issue_d, loan_amnt) %>% 
+  group_by(issue_d) %>% 
+  summarise(Amount = sum(loan_amnt))
+
+ts_amnt <- ggplot(amnt_df,aes(x = issue_d, y = Amount)) +
+  geom_line() + xlab("Date issued")
+```
+
+
+
+```{r}
 Desc(data_ROI$loan_status, plotit = TRUE)
 ```
 
-## Theoretical Roi compared to actual status of loan
+## Theoretical Roi compared to Grades
 
 ```{r}
 ggplot(data_ROI, aes(x= as.factor(loan_status), y=roi)) +
@@ -267,7 +242,7 @@ ggplot(data_ROI, aes(x= as.factor(loan_status), y=roi)) +
 
 
 
-## Theoretical Roi compared to grades
+## Theoretical Roi compared to actual status of loan
 
 ```{r}
 ggplot(data_ROI, aes(x= as.factor(grade), y=roi)) +
@@ -276,6 +251,24 @@ ggplot(data_ROI, aes(x= as.factor(grade), y=roi)) +
 
 ```
 
+## Late payments 
+
+```{r}
+data_test <- data_ROI %>% 
+  mutate(loan_end= issue_d + term*30.4375) %>% 
+  filter(loan_status!="Current") %>% 
+  mutate(late_days= loan_end - last_pymnt_d)
+
+fully_paid <- data_test %>% 
+  filter(loan_status=="Fully Paid")
+
+ggplot(fully_paid, aes(x=round(as.numeric(late_days)/30.4375))) +
+  geom_histogram(bins = max(fully_paid$late_days))
+
+# plotter retard en fonciton de ROI
+ggplot()
+
+```
 
 
 Quel proportion de mec voit son pret financer? 
@@ -283,3 +276,9 @@ Quel proportion de mec voit son pret financer?
 Quel son les prêts qui font défaults
 
 Rentabilité théorique vs réelle
+
+
+
+
+
+
