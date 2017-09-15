@@ -24,5 +24,8 @@
 * Correlation négtive entre le nombre de credit_line et le risque ? 
 * Est-ce que les gens qui empruntent sur 60 mois font des plus gros crédits ? 
 * Retrouve les users et verifier si ils prennent une autre ligne pour rembourser la précédente
+* Correlation entre proportion du salaire/prêt et status
+* Quel est la durée de prêt qui maximise le roi des investisseurs
+
 
 
