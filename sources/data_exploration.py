@@ -48,30 +48,7 @@ def prepare_data(data):
 
     '''
 
-    # Index by date
-    data['datetime'] = pd.to_datetime(data['datetime'])
-    data = data.set_index("datetime")
-
-    # Empty value checking
-    missinfo = (pd.isnull(data)).describe()
-    miss_check = (missinfo.loc['freq']==len(data))
-    if miss_check.tolist() == [True] * len(data.columns):
-        print("No missing data !")
-    else:
-        print("Missing data !")
-
-    # Create usefull date variables
-    data['hour'] = data.index.hour
-    data['month'] = data.index.month
-    data['year'] = data.index.year
-    data['cumulmonth'] = data['month'] + 12*(data['year']-data['year'][0])
-    data['weekend'] = (1-data['workingday']) * (1-data['holiday'])
-    data['dayName'] = data.index.dayofweek
-
-    # If you add features, don't forget to add them here :
-    feature_names = ['hour', 'workingday', 'season', 'holiday', 'weather', 'temp', 'atemp', \
-                     'humidity', 'month', 'cumulmonth', 'year', \
-                     'weekend', 'dayName']
+    feature_names = data.columns
 
     return [data, feature_names]
 
@@ -94,9 +71,8 @@ def exploredata(data_path, subpart):
     [data, feature_names] = prepare_data(data)
 
     if subpart==0:
-        print("Just a test")
         # Distributions des variables à prédire
-        for dep_var in ['registered', 'casual', 'count']:
+        for dep_var in data.columns:
             print(data[dep_var].describe())
             print("Skewness : %f" % data[dep_var].skew())
             print("Kurtosis %f " % data[dep_var].kurt())

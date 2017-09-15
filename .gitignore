@@ -1,1 +1,3 @@
 inputs/loan.csv
+sources/__pycache__
+sources/__pycache__/*
